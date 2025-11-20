@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSM Edits Time Lapse</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #16213e;
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #0f3460;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #16213e;
+            padding: 1rem;
+            overflow-y: auto;
+            border-right: 2px solid #0f3460;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            padding: 1rem;
+            background: #0f3460;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .controls h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            color: #e94560;
+        }
+
+        .city-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .city-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #0f3460;
+            background: #1a1a2e;
+            color: #eee;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .city-btn:hover {
+            background: #e94560;
+            border-color: #e94560;
+        }
+
+        .city-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+        }
+
+        .timeline-controls {
+            margin-top: 1rem;
+        }
+
+        .month-display {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #e94560;
+        }
+
+        .timeline-slider {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .playback-controls {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .playback-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: #e94560;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .playback-btn:hover {
+            background: #ff6b6b;
+        }
+
+        .playback-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .speed-control {
+            margin-top: 1rem;
+        }
+
+        .speed-control label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .speed-control select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            color: #eee;
+            border-radius: 4px;
+        }
+
+        .stats {
+            margin-top: 1rem;
+        }
+
+        .stats h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            color: #e94560;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #0f3460;
+            font-size: 0.85rem;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .user-list {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            font-size: 0.75rem;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .overlay-info {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 2rem;
+            left: 1rem;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            z-index: 1000;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            border: 3px solid #0f3460;
+            border-top: 3px solid #e94560;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .cumulative-toggle {
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cumulative-toggle input {
+            width: 18px;
+            height: 18px;
+        }
+
+        .cumulative-toggle label {
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>OSM Edits Time Lapse</h1>
+        <div class="subtitle">Mapping activity by YouthMappers contributors since 2024</div>
+    </header>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="controls">
+                <h3>Select City</h3>
+                <div class="city-buttons" id="city-buttons">
+                    <button class="city-btn active" data-city="all">All Cities</button>
+                </div>
+            </div>
+
+            <div class="controls timeline-controls">
+                <h3>Timeline</h3>
+                <div class="month-display" id="month-display">Loading...</div>
+                <input type="range" class="timeline-slider" id="timeline-slider" min="0" max="0" value="0">
+                <div class="playback-controls">
+                    <button class="playback-btn" id="prev-btn" title="Previous month">&lt;</button>
+                    <button class="playback-btn" id="play-btn" title="Play/Pause">Play</button>
+                    <button class="playback-btn" id="next-btn" title="Next month">&gt;</button>
+                </div>
+                <div class="speed-control">
+                    <label>Playback Speed</label>
+                    <select id="speed-select">
+                        <option value="2000">Slow (2s)</option>
+                        <option value="1000" selected>Normal (1s)</option>
+                        <option value="500">Fast (0.5s)</option>
+                        <option value="250">Very Fast (0.25s)</option>
+                    </select>
+                </div>
+                <div class="cumulative-toggle">
+                    <input type="checkbox" id="cumulative-check">
+                    <label for="cumulative-check">Show cumulative edits</label>
+                </div>
+            </div>
+
+            <div class="controls stats">
+                <h3>Current Month Stats</h3>
+                <div class="stat-item">
+                    <span>Changesets</span>
+                    <span class="stat-value" id="stat-changesets">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total Edits</span>
+                    <span class="stat-value" id="stat-edits">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Active Users</span>
+                    <span class="stat-value" id="stat-users">0</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h3>Top Contributors</h3>
+                <div class="user-list" id="user-list"></div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="overlay-info" id="overlay-info" style="display: none;"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #00ff88;"></div>
+                    <span>1-10 edits</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffff00;"></div>
+                    <span>11-50 edits</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff8800;"></div>
+                    <span>51-100 edits</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff0000;"></div>
+                    <span>100+ edits</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Loading changeset data...</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
