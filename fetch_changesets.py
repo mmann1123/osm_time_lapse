@@ -7,7 +7,7 @@ Uses the OSM API to download changeset metadata including bounding boxes.
 import requests
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -25,10 +25,12 @@ USERS = [
 # Cities with bounding boxes (min_lon, min_lat, max_lon, max_lat)
 CITIES = {
     'Rome, IT': (12.23, 41.65, 12.85, 42.10),
-    'Scottsdale, AZ': (-111.96, 33.40, -111.68, 33.85),
     'London, UK': (-0.51, 51.28, 0.33, 51.69),
+    'Manchester, UK': (-2.35, 53.35, -2.15, 53.55),
     'Naples, IT': (14.10, 40.78, 14.40, 40.95),
     'Brooklyn, NY': (-74.05, 40.57, -73.83, 40.74),
+    'Atlanta, GA': (-84.55, 33.65, -84.29, 33.89),
+    'Austin, TX': (-97.95, 30.10, -97.60, 30.50),
     'Phoenix, AZ': (-112.35, 33.27, -111.90, 33.70),
 }
 
@@ -158,20 +160,22 @@ def main():
     with open(output_dir / 'changesets.json', 'w') as f:
         json.dump(all_changesets, f, indent=2)
 
-    # Create monthly aggregation
-    monthly_data = {}
+    # Create weekly aggregation
+    weekly_data = {}
     for cs in all_changesets:
         if 'center' not in cs:
             continue
 
-        # Parse month
+        # Parse week (ISO week starting on Monday)
         created_at = datetime.fromisoformat(cs['created_at'].replace('Z', '+00:00'))
-        month_key = created_at.strftime('%Y-%m')
+        # Get the Monday of the week
+        week_start = created_at - timedelta(days=created_at.weekday())
+        week_key = week_start.strftime('%Y-%m-%d')
 
-        if month_key not in monthly_data:
-            monthly_data[month_key] = []
+        if week_key not in weekly_data:
+            weekly_data[week_key] = []
 
-        monthly_data[month_key].append({
+        weekly_data[week_key].append({
             'id': cs['id'],
             'user': cs['user'],
             'lon': cs['center']['lon'],
@@ -182,9 +186,9 @@ def main():
             'comment': cs.get('tags', {}).get('comment', ''),
         })
 
-    # Save monthly data
-    with open(output_dir / 'monthly_changesets.json', 'w') as f:
-        json.dump(monthly_data, f, indent=2)
+    # Save weekly data
+    with open(output_dir / 'weekly_changesets.json', 'w') as f:
+        json.dump(weekly_data, f, indent=2)
 
     # Save city definitions
     with open(output_dir / 'cities.json', 'w') as f:
@@ -203,7 +207,7 @@ def main():
     print(f"Total changesets: {len(all_changesets)}")
     print(f"Users with data: {sum(1 for v in user_stats.values() if v > 0)}/{len(USERS)}")
     print(f"Date range: {all_changesets[0]['created_at'][:10] if all_changesets else 'N/A'} to {all_changesets[-1]['created_at'][:10] if all_changesets else 'N/A'}")
-    print(f"Months covered: {len(monthly_data)}")
+    print(f"Weeks covered: {len(weekly_data)}")
 
     # City breakdown
     city_counts = {}

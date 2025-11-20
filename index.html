@@ -75,8 +75,8 @@
         }
 
         .city-buttons {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 0.5rem;
         }
 
@@ -89,6 +89,8 @@
             cursor: pointer;
             font-size: 0.8rem;
             transition: all 0.2s;
+            min-width: 100px;
+            text-align: center;
         }
 
         .city-btn:hover {
@@ -308,13 +310,13 @@
                     <label>Playback Speed</label>
                     <select id="speed-select">
                         <option value="2000">Slow (2s)</option>
-                        <option value="1000" selected>Normal (1s)</option>
-                        <option value="500">Fast (0.5s)</option>
+                        <option value="1000">Normal (1s)</option>
+                        <option value="500" selected>Fast (0.5s)</option>
                         <option value="250">Very Fast (0.25s)</option>
                     </select>
                 </div>
                 <div class="cumulative-toggle">
-                    <input type="checkbox" id="cumulative-check">
+                    <input type="checkbox" id="cumulative-check" checked>
                     <label for="cumulative-check">Show cumulative edits</label>
                 </div>
             </div>
